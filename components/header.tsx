@@ -5,18 +5,36 @@ import { useState } from "react";
 import { Logo } from "./logo";
 import { useDataContext } from "@/lib/DataContext";
 import { useRouter, usePathname } from "next/navigation";
+import { SCHEMES, Scheme } from "@/lib/syllabus";
+
+function ChevronIcon() {
+  return (
+    <svg
+      className="mt-[2px] w-5 h-5 sm:w-6 sm:h-6 text-gray-200"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden="true"
+      data-slot="icon"
+    >
+      <path
+        fillRule="evenodd"
+        d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false);
-  const { dept, setDept } = useDataContext();
+  const [openMenu, setOpenMenu] = useState<"dept" | "scheme" | null>(null);
+  const { dept, setDept, scheme, setScheme } = useDataContext();
   const departments = ["CSE", "ECE", "IT"];
   const pathname = usePathname();
   const router = useRouter();
 
-  const toggleDropdown = () => setIsOpen((prev) => !prev);
   const handleSelect = (newDept: string) => {
     setDept(newDept);
-    setIsOpen(false);
+    setOpenMenu(null);
 
     // If on home page, don't navigate
     if (pathname === "/") return;
@@ -60,34 +78,57 @@ export default function Header() {
     // Fallback: just go to /[newDept]
     router.push(`/${newDept.toLowerCase()}`);
   };
+
+  const handleSchemeSelect = (nextScheme: Scheme) => {
+    setScheme(nextScheme);
+    setOpenMenu(null);
+  };
+
   return (
     <div className="w-full px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center text-white absolute top-0 left-0 z-10">
-      <Link href={'/'}>
-        <Logo className="size-15 md:size-20" />
-      </Link>
+      <div className="flex items-center gap-4 sm:gap-8">
+        <Link href={'/'}>
+          <Logo className="size-15 md:size-20" />
+        </Link>
+
+        <div className="relative items-center flex-col">
+          <div className="hidden md:block text-md font-bold">Scheme</div>
+          <button
+            onClick={() => setOpenMenu(openMenu === "scheme" ? null : "scheme")}
+            className="cursor-pointer flex justify-between items-center focus:outline-none"
+          >
+            <span className="text-base sm:text-lg font-medium mr-1 sm:mr-[3px]">{scheme}</span>
+            <ChevronIcon />
+          </button>
+          {openMenu === "scheme" && (
+            <div className="absolute left-0 mt-2 w-24 sm:w-28 bg-black/70 text-white rounded-md shadow-lg z-20 border-[1px] border-gray-600">
+              {SCHEMES.map((s) => (
+                <div
+                  key={s}
+                  onClick={() => handleSchemeSelect(s)}
+                  className={`px-3 sm:px-4 py-2 cursor-pointer text-sm sm:text-base
+                    ${scheme === s
+                      ? "bg-white/20 text-white"
+                      : "hover:bg-white/10"}`}
+                >
+                  {s}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="relative items-center flex-col">
         <div className="hidden md:block text-md font-bold">Department</div>
         <button
-          onClick={toggleDropdown}
+          onClick={() => setOpenMenu(openMenu === "dept" ? null : "dept")}
           className="cursor-pointer flex justify-between items-center focus:outline-none mr-3 sm:ml-7"
         >
           <span className="text-base sm:text-lg font-medium mr-1 sm:mr-[3px]">{dept == '' ? "Select" : dept}</span>
-          <svg
-            className="mt-[2px] w-5 h-5 sm:w-6 sm:h-6 text-gray-200"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-            data-slot="icon"
-          >
-            <path
-              fillRule="evenodd"
-              d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
-              clipRule="evenodd"
-            />
-          </svg>
+          <ChevronIcon />
         </button>
-        {isOpen && (
+        {openMenu === "dept" && (
           <div className="absolute right-0 mt-2 w-24 sm:w-28 bg-black/70 text-white rounded-md shadow-lg z-20 border-[1px] border-gray-600">
             {departments.map((d) => (
               <div

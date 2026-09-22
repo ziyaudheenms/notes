@@ -3,34 +3,28 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useDataContext } from '@/lib/DataContext';
-import { getSemesterKeys, getSemesterLabel, getSyllabusUrl } from '@/lib/syllabus';
-import { useRouter } from 'next/navigation';
+import { getSemesterLabel, getSubjectLinks} from '@/lib/syllabus';
 
 export default function DepartmentPage() {
-  const router = useRouter();
   const params = useParams();
   const dept = params.dept as string;
   const { scheme } = useDataContext();
-  const semesters = getSemesterKeys(scheme, dept);
+  const subjects = getSubjectLinks(scheme, dept, params.sem as string);
 
-  const handleRedirect = (semester: string) => {
-    // For the 2025 scheme, navigate to the respective subjects page and exit
-    if (scheme === '2025') {
-      router.push(`/${dept}/syllabus/${semester}`);
-      return; // <-- Prevents the rest of the function from running!
-    }
-  
-    // For the 2020 scheme, fetch and open the single semester Google Drive link
-    const url = getSyllabusUrl(scheme, dept, semester);
-  
+  const handleRedirect = (url: string) => {
+   
     if (url) {
       window.open(url, '_blank');
+      
     } else {
-      console.warn(`No drive link found for ${scheme} scheme, ${dept?.toUpperCase()} department, semester ${semester}`);
-      window.alert(`${scheme} syllabus for ${dept?.toUpperCase()} Semester ${semester} will be added soon.`);
+    //   console.warn(`No drive link found for ${scheme} scheme, ${dept?.toUpperCase()} department, semester ${semester}`);
+    //   window.alert(`${scheme} syllabus for ${dept?.toUpperCase()} Semester ${semester} will be added soon.`);
     }
-  };
 
+
+
+  };
+  console.log(subjects)
   return (
     <div className=" flex flex-col">
       <div className="flex-1 text-white flex flex-col justify-center items-center py-8">
@@ -70,27 +64,42 @@ export default function DepartmentPage() {
                 <li className="text-gray-400 capitalize">
                   {dept?.toUpperCase()}
                 </li>
+                <li>
+                  <span className="mx-2">/</span>
+                </li>
+                <li className="text-gray-400 capitalize">
+                  semester {params.sem as string}
+                </li>
               </ol>
             </nav>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-8 w-full max-w-6xl items-stretch">
-          {semesters.map((sem) => {
-            const hasLink = Boolean(getSyllabusUrl(scheme, dept, sem));
+            {
+               Object.keys(subjects).length < 1 ? (
+                <span className=' text-white text-base  font-semibold text-center '>We Are Working On It, Will Come Soon</span>
+               ) : (
+                ''
+               )
+            }
+          {Object.keys(subjects).map((sem) => {
+            const hasLink = Boolean(subjects[sem]);
             return (
               <button
                 key={sem}
-                onClick={() => handleRedirect(sem)}
+                onClick={() => handleRedirect(subjects[sem])}
                 className="group relative flex flex-col items-center justify-center bg-black/60 border border-white/20 rounded-xl shadow-md px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 backdrop-blur-md cursor-pointer hover:scale-105 hover:shadow-2xl overflow-hidden h-full min-h-[72px]"
                 style={{ minWidth: "290px", maxWidth: "290px", margin: "0 auto" }}
               >
                 <span className="z-10 text-white text-base sm:text-lg font-semibold text-center break-words">
-                  {getSemesterLabel(sem)}
+                  {(sem)}
                 </span>
-                {/* {!hasLink && (
+
+                {!hasLink && (
                   <span className="z-10 text-xs text-gray-400 mt-1">Coming soon</span>
-                )} */}
+                )}
+
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-300 bg-gradient-to-r from-white/10 to-black/10 pointer-events-none" />
               </button>
             );

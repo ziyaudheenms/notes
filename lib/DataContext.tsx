@@ -7,6 +7,7 @@ import Papa from 'papaparse';
 import { CSQL } from './csql';
 import Loading from '@/app/loading_';
 import DepartmentSelectDialog from '@/components/DepartmentSelectDialog';
+import { Scheme } from './syllabus';
 
 type DataContextType = {
     db: CSQL | undefined;
@@ -14,6 +15,8 @@ type DataContextType = {
     pyq: CSQL | undefined; // <-- add this
     dept: string;
     setDept: React.Dispatch<React.SetStateAction<string>>;
+    scheme: Scheme;
+    setScheme: React.Dispatch<React.SetStateAction<Scheme>>;
 };
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -23,7 +26,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [vldb, setVldb] = useState<CSQL>();
     const [pyq, setPyq] = useState<CSQL>(); // <-- add this
     const [dept, setDept] = useState<string>('');
-    const [showDeptDialog, setShowDeptDialog] = useState<boolean>(false);    useEffect(() => {
+    const [scheme, setScheme] = useState<Scheme>('2020');
+    const [schemeReady, setSchemeReady] = useState(false);
+    const [showDeptDialog, setShowDeptDialog] = useState<boolean>(false);
+    useEffect(() => {
         Papa.parse(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=notes`, {
             download: true,
             header: true,
@@ -74,18 +80,30 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                 console.error('Error parsing PYQ CSV:', error);
             }
         });
-    }, []);    useEffect(() => {
+    }, []);
+    useEffect(() => {
+        const cachedScheme = localStorage.getItem('scheme');
+        if (cachedScheme === '2020' || cachedScheme === '2025') {
+            setScheme(cachedScheme);
+        }
+        setSchemeReady(true);
+    }, []);
+    useEffect(() => {
         if (dept) {
             localStorage.setItem('dept', dept);
         }
     }, [dept]);
+    useEffect(() => {
+        if (!schemeReady) return;
+        localStorage.setItem('scheme', scheme);
+    }, [scheme, schemeReady]);
 
     const handleDepartmentSelect = (selectedDept: string) => {
         setDept(selectedDept);
         setShowDeptDialog(false);
     };
         return (
-        <DataContext.Provider value={{ db, vldb, pyq, dept, setDept }}>
+        <DataContext.Provider value={{ db, vldb, pyq, dept, setDept, scheme, setScheme }}>
             <DepartmentSelectDialog 
                 isOpen={showDeptDialog} 
                 onSelect={handleDepartmentSelect}
