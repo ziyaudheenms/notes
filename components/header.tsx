@@ -39,49 +39,84 @@ export default function Header() {
     // If on home page, don't navigate
     if (pathname === "/") return;
 
-    // If on a question-paper route, replace the department part
-    if (pathname.startsWith("/question-paper")) {
-      const parts = pathname.split("/").filter(Boolean); // ["question-paper", "cse", ...]
-      if (parts.length >= 2) {
-        parts[1] = newDept.toLowerCase(); // Replace department
-        router.push("/" + parts.join("/"));
-      } else {
-        // If only /question-paper, go to /question-paper/[newDept]
-        router.push(`/question-paper/${newDept.toLowerCase()}`);
-      }
-      return;
-    }
-
-    // Split the current path
     const parts = pathname.split("/").filter(Boolean);
 
-    // If path is just /, go to /[newDept]
-    if (parts.length === 0) {
-      router.push(`/${newDept.toLowerCase()}`);
+    // If path starts with scheme (2020 or 2025)
+    if (parts.length > 0 && SCHEMES.includes(parts[0] as Scheme)) {
+      const activeScheme = parts[0];
+      if (parts.length >= 2) {
+        if (departments.map(d => d.toLowerCase()).includes(parts[1])) {
+          parts[1] = newDept.toLowerCase();
+          router.push("/" + parts.join("/"));
+          return;
+        }
+        if (parts[1] === "syllabus") {
+          router.push(`/${activeScheme}/${newDept.toLowerCase()}/syllabus`);
+          return;
+        }
+        if (parts[1] === "question-paper" || parts[1] === "pyq") {
+          router.push(`/${activeScheme}/${newDept.toLowerCase()}/pyq`);
+          return;
+        }
+        if (parts[1] === "notes") {
+          router.push(`/${activeScheme}/${newDept.toLowerCase()}`);
+          return;
+        }
+      }
+      router.push(`/${activeScheme}/${newDept.toLowerCase()}`);
       return;
     }
 
-    // Check if current path is a syllabus route
-    if (parts[0] === "syllabus") {
-      // If on syllabus route, redirect to /syllabus/[newDept]
-      router.push(`/syllabus/${newDept.toLowerCase()}`);
+    // If legacy routes
+    if (pathname === "/syllabus") {
+      router.push(`/${scheme}/${newDept.toLowerCase()}/syllabus`);
       return;
     }
 
-    // If path starts with a department, replace it
-    if (departments.map(d => d.toLowerCase()).includes(parts[0])) {
-      parts[0] = newDept.toLowerCase();
-      router.push("/" + parts.join("/"));
+    if (pathname === "/question-paper") {
+      router.push(`/${scheme}/${newDept.toLowerCase()}/pyq`);
       return;
     }
 
-    // Fallback: just go to /[newDept]
-    router.push(`/${newDept.toLowerCase()}`);
+    if (pathname === "/notes") {
+      router.push(`/${scheme}/${newDept.toLowerCase()}`);
+      return;
+    }
+
+    // Fallback
+    router.push(`/${scheme}/${newDept.toLowerCase()}`);
   };
 
   const handleSchemeSelect = (nextScheme: Scheme) => {
     setScheme(nextScheme);
     setOpenMenu(null);
+
+    if (pathname === "/") return;
+
+    const parts = pathname.split("/").filter(Boolean);
+
+    if (parts.length > 0 && SCHEMES.includes(parts[0] as Scheme)) {
+      parts[0] = nextScheme;
+      router.push("/" + parts.join("/"));
+      return;
+    }
+
+    if (pathname.startsWith("/syllabus")) {
+      router.push(`/${nextScheme}/syllabus`);
+      return;
+    }
+
+    if (pathname.startsWith("/question-paper")) {
+      router.push(`/${nextScheme}/question-paper`);
+      return;
+    }
+
+    if (pathname.startsWith("/notes")) {
+      router.push(`/${nextScheme}/notes`);
+      return;
+    }
+
+    router.push(`/${nextScheme}`);
   };
 
   return (

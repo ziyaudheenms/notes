@@ -12,7 +12,7 @@ import { Scheme } from './syllabus';
 type DataContextType = {
     db: CSQL | undefined;
     vldb: CSQL | undefined;
-    pyq: CSQL | undefined; // <-- add this
+    pyq: CSQL | undefined;
     dept: string;
     setDept: React.Dispatch<React.SetStateAction<string>>;
     scheme: Scheme;
@@ -36,6 +36,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             complete: (results) => {
                 if (results.errors.length > 0) {
                     console.error('Error loading database:', results.errors);
+                    setDb(new CSQL([]));
                 } else {
                     const cachedDept = localStorage.getItem('dept');
                     if(cachedDept) {
@@ -43,11 +44,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                     } else {
                         setShowDeptDialog(true);
                     }
-                    setDb(new CSQL(results.data));
+                    const parsedData = (results.data as any[]).map(row => ({
+                        ...row,
+                        Scheme: row.Scheme ? String(row.Scheme).trim() : '2020',
+                    }));
+                    setDb(new CSQL(parsedData));
                 }
             },
             error: (error) => {
                 console.error('Error parsing CSV:', error);
+                setDb(new CSQL([]));
             }
         });
 
@@ -72,21 +78,35 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             complete: (results) => {
                 if (results.errors.length > 0) {
                     console.error('Error loading PYQ:', results.errors);
+                    setPyq(new CSQL([]));
                 } else {
-                    setPyq(new CSQL(results.data));
+                    const parsedPyq = (results.data as any[]).map(row => ({
+                        ...row,
+                        Scheme: row.Scheme ? String(row.Scheme).trim() : '2020',
+                    }));
+                    setPyq(new CSQL(parsedPyq));
                 }
             },
             error: (error) => {
                 console.error('Error parsing PYQ CSV:', error);
+                setPyq(new CSQL([]));
             }
         });
     }, []);
     useEffect(() => {
-        const cachedScheme = localStorage.getItem('scheme');
-        if (cachedScheme === '2020' || cachedScheme === '2025') {
-            setScheme(cachedScheme);
+        if (typeof window !== 'undefined') {
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            if (parts[0] === '2020' || parts[0] === '2025') {
+                setScheme(parts[0]);
+                localStorage.setItem('scheme', parts[0]);
+            } else {
+                const cachedScheme = localStorage.getItem('scheme');
+                if (cachedScheme === '2020' || cachedScheme === '2025') {
+                    setScheme(cachedScheme);
+                }
+            }
+            setSchemeReady(true);
         }
-        setSchemeReady(true);
     }, []);
     useEffect(() => {
         if (dept) {

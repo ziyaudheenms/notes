@@ -5,59 +5,65 @@ import { useDataContext } from "@/lib/DataContext";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Footer from "@/components/footer";
+import _ from "lodash";
+import { useParams, useRouter } from "next/navigation";
+import { MdUpcoming } from "react-icons/md";
+import { Scheme } from "@/lib/syllabus";
 
-export default function Page({
-  params,
-}: {
-  params: Promise<{ sem: string; dept: string }>;
-}) {
+export default function Page() {
+  const params = useParams();
+  const schemeParam = (params.scheme as Scheme) || "2020";
+  const semParam = params.sem as string;
+  const deptParam = params.dept as string;
+
   const [subjects, setSubjects] = useState<Note[]>();
-  const [resolvedParams, setResolvedParams] = useState<{
-    sem: string;
-    dept: string;
-  } | null>(null);
-  const { pyq } = useDataContext();
+  const { db, vldb, scheme, setScheme, setDept } = useDataContext();
+  const router = useRouter();
+
+  const currentScheme = schemeParam || scheme || "2020";
 
   useEffect(() => {
-    const resolveParams = async () => {
-      const resolved = await params;
-      setResolvedParams(resolved);
-    };
-    resolveParams();
-  }, [params]);
+    if (schemeParam === "2020" || schemeParam === "2025") {
+      setScheme(schemeParam);
+    }
+    if (deptParam && ["cse", "ece", "it"].includes(deptParam.toLowerCase())) {
+      setDept(deptParam.toUpperCase());
+    }
+  }, [schemeParam, deptParam, setScheme, setDept]);
 
   useEffect(() => {
-    if (!resolvedParams) return;
+    if (!deptParam || !semParam) return;
 
     const fetchSubjects = async () => {
       try {
-        const rawSubjects =
-          pyq?.query({
+        const subs1 = db?.query({
             where: {
-              Department: resolvedParams.dept.toUpperCase(),
-              Semester: resolvedParams.sem,
+              Department: deptParam.toUpperCase(),
+              Semester: semParam,
+              Scheme: currentScheme,
             },
             distinct: "Subject",
           }) || [];
 
-        // Deduplicate by normalized subject name (remove spaces and commas, lowercase)
-        const subjectMap = new Map();
-        rawSubjects.forEach((sub: Note) => {
-          const trimmed = sub.Subject.trim();
-          if (!subjectMap.has(trimmed.toLowerCase())) {
-            subjectMap.set(trimmed.toLowerCase(), { ...sub, Subject: trimmed });
-          }
-        });
-        setSubjects(Array.from(subjectMap.values()));
+        // For VLDB video lectures, if applicable for 2020 or available
+        const subs2 = currentScheme === '2020' ? (vldb?.query({
+          where: {
+            Department: deptParam.toUpperCase(),
+            Semester: semParam,
+          },
+          distinct: "Subject",
+        }) || []) : [];
+
+        setSubjects(_.uniq([...subs1, ...subs2]));
       } catch (error) {
         console.error("Error fetching subjects:", error);
       }
     };
 
     fetchSubjects();
-  }, [resolvedParams, pyq]);
+  }, [deptParam, semParam, db, currentScheme, vldb]);
 
-  if (!resolvedParams) {
+  if (!deptParam || !semParam) {
     return (
       <div className="text-center mt-10 text-white flex flex-col items-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mb-4"></div>
@@ -66,8 +72,8 @@ export default function Page({
     );
   }
 
-  const semNumber = resolvedParams.sem;
-  const deptLower = resolvedParams.dept.toLowerCase();
+  const semNumber = semParam;
+  const deptLower = deptParam.toLowerCase();
 
   if (!["cse", "ece", "it"].includes(deptLower)) {
     return (
@@ -86,21 +92,27 @@ export default function Page({
     );
   }
   if (subjects.length === 0) {
-    return (
-      <div className="text-center mt-10 text-white">
-        No subjects found for semester {semNumber} in department {deptLower}
+    return (<>
+      <div className="text-center text-white items-center flex flex-col md:flex-row col-span-full bg-black/60 rounded-xl backdrop-blur p-5 shadow-md border-gray-700 border mt-8 sm:mt-0">
+         <MdUpcoming className="text-6xl mb-2 md:smr-3" />
+          Notes for {currentScheme} Scheme, Semester {semNumber} are not available yet. <br/>
+          We are working on adding it. Please check back later.
       </div>
-    );
+      <Link href={"#"} onClick={router.back} className="mt-4 bg-black/60 text-white px-4 py-2 rounded-lg hover:bg-black scale-100 hover:scale-105 transition-all shadow duration-300">
+        Go Back
+      </Link>
+      <Footer />
+    </>);
   }
 
   return (
-    <div className="text-white flex flex-col justify-center items-center py-10 sm:py-0">
+    <div className="text-white flex flex-col justify-center items-center">
       <div className="w-full max-w-4xl mb-6 bg-black/60 rounded-xl p-5 shadow-md border-gray-700 border mt-8 sm:mt-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="text-xl font-bold break-words">SELECT SUBJECT</div>
             <div className="text-sm text-gray-300 mt-1 capitalize">
-              {deptLower.toUpperCase()}
+              {deptLower.toUpperCase()} Department · {currentScheme} Scheme
             </div>
           </div>
           <div className="flex flex-col sm:items-end">
@@ -123,7 +135,7 @@ export default function Page({
               </li>
               <li>
                 <Link
-                  href={`/${deptLower}/pyq`}
+                  href={`/${currentScheme}/${deptLower}`}
                   className="hover:underline text-gray-300"
                 >
                   {deptLower.toUpperCase()}
@@ -143,8 +155,10 @@ export default function Page({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-8 w-full max-w-4xl items-stretch">
         {subjects.map((sub, index) => (
           <Link
-            key={index}
-            href={`/${deptLower}/pyq/${semNumber}/${sub.Subject.trim().toLowerCase().replace(/[\s,]+/g, "-")}`}
+            key={`${sub.Subject}-${index}`}
+            href={`/${currentScheme}/${deptLower}/${semNumber}/${sub.Subject
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`}
             className="group relative flex flex-col items-center justify-center bg-black/60 border border-white/20 rounded-xl shadow-md px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 backdrop-blur-md cursor-pointer hover:scale-105 hover:shadow-2xl overflow-hidden h-full min-h-[72px]"
             style={{ minWidth: "290px", maxWidth: "290px", margin: "0 auto" }}
           >

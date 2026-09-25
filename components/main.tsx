@@ -15,7 +15,7 @@ export default function Main() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const { db, dept } = useDataContext();
+  const { db, dept, scheme } = useDataContext();
   const [recentModules, setRecentModules] = useState<
     { module: string; subject: string; sem: string; dept: string; url: string }[]
   >([]);
@@ -76,19 +76,21 @@ export default function Main() {
         where: {
           Department: dept.toUpperCase(),
           Subject: subject.toUpperCase(),
+          Scheme: scheme,
         }
       });
 
       const r2 = db?.query({
         where: {
           Subject: subject.toUpperCase(),
+          Scheme: scheme,
         },
       });
 
-      const result = r1?.length == 0 ? r2 : r1;
+      const result = (r1 && r1.length > 0) ? r1 : r2;
 
       if (result && result.length > 0) {
-        router.push(`/${result[0].Department}/${result[0].Semester}/${getSubjectSlug(result[0].Subject)}`);
+        router.push(`/${scheme}/${result[0].Department.toLowerCase()}/${result[0].Semester}/${getSubjectSlug(result[0].Subject)}`);
         setLoading(false);
         return;
       }
@@ -99,11 +101,12 @@ export default function Main() {
         where: {
           Department: dept.toUpperCase(),
           Semester: sem,
+          Scheme: scheme,
         },
       });
 
       if (result && result.length > 0) {
-        router.push(`/${result[0].Department}/${result[0].Semester}`);
+        router.push(`/${scheme}/${result[0].Department.toLowerCase()}/${result[0].Semester}`);
         setLoading(false);
         return;
       }
@@ -115,6 +118,7 @@ export default function Main() {
           Department: dept.toUpperCase(),
           Semester: sem,
           Subject: subject.toUpperCase(),
+          Scheme: scheme,
         },
       });
 
@@ -122,13 +126,14 @@ export default function Main() {
         where: {
           Semester: sem,
           Subject: subject.toUpperCase(),
+          Scheme: scheme,
         },
       });
 
-      const result = r1?.length == 0 ? r2 : r1;
+      const result = (r1 && r1.length > 0) ? r1 : r2;
 
       if (result && result.length > 0) {
-        router.push(`/${result[0].Department}/${result[0].Semester}/${getSubjectSlug(result[0].Subject)}`);
+        router.push(`/${scheme}/${result[0].Department.toLowerCase()}/${result[0].Semester}/${getSubjectSlug(result[0].Subject)}`);
         setLoading(false);
         return;
       }
@@ -148,19 +153,26 @@ export default function Main() {
         Semester: sem,
         Subject: subject.toUpperCase(),
         Module: module_,
+        Scheme: scheme,
       },
     });
 
     setLoading(false);
     if (!response || response.length === 0) {
       setErrorMsg(
-        `No data found for ${dept} - Semester ${sem}, Subject: ${subject}, Module: ${module_}`
+        `No data found for ${dept} (${scheme} Scheme) - Semester ${sem}, Subject: ${subject}, Module: ${module_}`
       );
       console.error("No data found for the given query.");
       return;
     }
 
     setErrorMsg("");
+
+    if (response[0].File === "#" || !response[0].File) {
+      window.alert(`Notes for ${scheme} Scheme will be uploaded soon!`);
+      router.push(`/${scheme}/${response[0].Department.toLowerCase()}/${response[0].Semester}/${getSubjectSlug(response[0].Subject)}`);
+      return;
+    }
 
     const newRecent = {
       module: response[0].Title,
@@ -257,20 +269,20 @@ export default function Main() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-xs sm:max-w-md lg:max-w-2xl mb-4 sm:mb-4">
           <button
-            onClick={() => dept ? router.push(`/${dept.toLowerCase()}/pyq`) : setErrorMsg("Please select a department first.")}
+            onClick={() => dept ? router.push(`/${scheme}/${dept.toLowerCase()}/pyq`) : setErrorMsg("Please select a department first.")}
             className={`bg-black/30 hover:bg-black/50 transition text-white text-sm sm:text-base lg:text-lg font-semibold px-4 sm:px-6 py-3 rounded-xl backdrop-blur-md shadow-md w-full text-center hover:scale-105 ${!dept ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
             disabled={!dept}
           >
             Question Paper
           </button>
           <Link
-            href={dept ? `/${dept.toLowerCase()}` : "/"}
+            href={dept ? `/${scheme}/${dept.toLowerCase()}` : `/${scheme}/notes`}
             className="bg-black/30 hover:bg-black/60 cursor-pointer transition text-white text-sm sm:text-base lg:text-lg font-semibold px-4 sm:px-6 py-3 rounded-xl backdrop-blur-md shadow-md w-full flex items-center justify-center text-center hover:scale-105"
           >
             Notes
           </Link>
           <Link
-            href={dept ? `/${dept.toLowerCase()}/syllabus` : "/"}
+            href={dept ? `/${scheme}/${dept.toLowerCase()}/syllabus` : `/${scheme}/syllabus`}
             className="bg-black/30 hover:bg-black/60 cursor-pointer transition text-white text-sm sm:text-base lg:text-lg font-semibold px-4 sm:px-6 py-3 rounded-xl backdrop-blur-md shadow-md w-full flex items-center justify-center text-center hover:scale-105"
           >
             Syllabus

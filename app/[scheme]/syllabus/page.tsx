@@ -1,11 +1,22 @@
 'use client';
 
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Footer from '@/components/footer';
 import { useDataContext } from '@/lib/DataContext';
+import { useEffect } from 'react';
+import { Scheme } from '@/lib/syllabus';
 
-export default function SyllabusPage() {
-  const { scheme } = useDataContext();
+export default function SchemeSyllabusPage() {
+  const params = useParams();
+  const schemeParam = (params.scheme as Scheme) || "2020";
+  const { setScheme } = useDataContext();
+
+  useEffect(() => {
+    if (schemeParam === "2020" || schemeParam === "2025") {
+      setScheme(schemeParam);
+    }
+  }, [schemeParam, setScheme]);
 
   return (
     <div className="flex flex-col">
@@ -15,7 +26,7 @@ export default function SyllabusPage() {
             <div>
               <div className="text-xl font-bold break-words">SYLLABUS</div>
               <div className="text-sm text-gray-300 mt-1">
-                Select Your Department · {scheme} Scheme
+                Select Your Department · {schemeParam} Scheme
               </div>
             </div>
           </div>
@@ -33,7 +44,7 @@ export default function SyllabusPage() {
                   <span className="mx-2">/</span>
                 </li>
                 <li className="text-gray-400">
-                  {scheme} Scheme Syllabus
+                  {schemeParam} Scheme Syllabus
                 </li>
               </ol>
             </nav>
@@ -44,7 +55,7 @@ export default function SyllabusPage() {
           {['CSE', 'ECE', 'IT'].map((dept) => (
             <Link
               key={dept}
-              href={`/${scheme}/${dept.toLowerCase()}/syllabus`}
+              href={`/${schemeParam}/${dept.toLowerCase()}/syllabus`}
               className="group relative flex flex-col items-center justify-center bg-black/60 border border-white/20 rounded-xl shadow-md px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 backdrop-blur-md cursor-pointer hover:scale-105 hover:shadow-2xl overflow-hidden h-full min-h-[72px]"
               style={{ minWidth: "290px", maxWidth: "290px", margin: "0 auto" }}
             >
